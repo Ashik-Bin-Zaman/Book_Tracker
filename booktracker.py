@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 from datetime import datetime
 from collections import defaultdict
 
-# Book class for borrowed/to-read books
+# ------------------ Book Class ------------------
 class Book:
     def __init__(self, title, author=None, borrowed_from=None, borrowed_date=None, return_due_date=None, is_read=False):
         self.title = title
@@ -13,21 +13,59 @@ class Book:
         self.return_due_date = return_due_date
         self.is_read = is_read
 
+# ------------------ Tree for Completed Books ------------------
+class BookNode:
+    def __init__(self, book):
+        self.book = book
+        self.left = None
+        self.right = None
+
+class CompletedBooksBST:
+    def __init__(self):
+        self.root = None
+
+    def insert(self, book):
+        def _insert(node, book):
+            if node is None:
+                return BookNode(book)
+            if book.title.lower() < node.book.title.lower():
+                node.left = _insert(node.left, book)
+            else:
+                node.right = _insert(node.right, book)
+            return node
+        self.root = _insert(self.root, book)
+
+    def search(self, title):
+        def _search(node, title):
+            if node is None:
+                return None
+            if node.book.title.lower() == title.lower():
+                return node.book
+            elif title.lower() < node.book.title.lower():
+                return _search(node.left, title)
+            else:
+                return _search(node.right, title)
+        return _search(self.root, title)
+
+# ------------------ Main App Class ------------------
 class BookTrackerApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Personal Book Tracker")
-        self.root.geometry("700x500")
+        self.root.geometry("800x600")
 
         self.borrowed_books = []
         self.monthly_to_read = defaultdict(list)
+        self.completed_tree = CompletedBooksBST()
 
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(expand=True, fill='both')
 
         self.create_borrow_tab()
         self.create_to_read_tab()
+        self.create_completed_tab()
 
+    # -------- Borrowed Books Tab --------
     def create_borrow_tab(self):
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text='Borrowed Books')
@@ -61,6 +99,7 @@ class BookTrackerApp:
         except:
             messagebox.showerror("Date Error", "Please enter valid dates in YYYY-MM-DD format.")
 
+    # -------- Monthly To-Read Tab --------
     def create_to_read_tab(self):
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text='Monthly To-Read')
@@ -97,7 +136,54 @@ class BookTrackerApp:
         else:
             messagebox.showwarning("Missing Info", "Month and Title are required.")
 
-#Main
+    # -------- Completed Books Tab --------
+    def create_completed_tab(self):
+        tab = ttk.Frame(self.notebook)
+        self.notebook.add(tab, text='Completed Books')
+
+        ttk.Label(tab, text="Title").grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        ttk.Label(tab, text="Author").grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+        self.completed_title_entry = ttk.Entry(tab, width=30)
+        self.completed_author_entry = ttk.Entry(tab, width=30)
+
+        self.completed_title_entry.grid(row=0, column=1)
+        self.completed_author_entry.grid(row=1, column=1)
+
+        ttk.Button(tab, text="Add Completed Book", command=self.add_completed_book).grid(row=2, column=0, columnspan=2, pady=10)
+
+        ttk.Label(tab, text="Search Completed Book Title").grid(row=3, column=0, padx=10, pady=5, sticky="w")
+        self.search_entry = ttk.Entry(tab, width=30)
+        self.search_entry.grid(row=3, column=1)
+
+        ttk.Button(tab, text="Search", command=self.search_completed_book).grid(row=4, column=0, columnspan=2, pady=5)
+
+        self.completed_output = tk.Text(tab, height=6, width=70)
+        self.completed_output.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
+
+    def add_completed_book(self):
+        title = self.completed_title_entry.get()
+        author = self.completed_author_entry.get()
+
+        if title:
+            book = Book(title=title, author=author, is_read=True)
+            self.completed_tree.insert(book)
+            self.completed_output.insert(tk.END, f"Added: {title} by {author}\n")
+            self.completed_title_entry.delete(0, tk.END)
+            self.completed_author_entry.delete(0, tk.END)
+        else:
+            messagebox.showwarning("Missing Info", "Book title is required.")
+
+    def search_completed_book(self):
+        title = self.search_entry.get()
+        book = self.completed_tree.search(title)
+        self.completed_output.delete(1.0, tk.END)
+        if book:
+            self.completed_output.insert(tk.END, f"Found: {book.title} by {book.author}\n")
+        else:
+            self.completed_output.insert(tk.END, f"No book found with title '{title}'\n")
+
+# ------------------ Main ------------------
 if __name__ == "__main__":
     root = tk.Tk()
     style = ttk.Style()
